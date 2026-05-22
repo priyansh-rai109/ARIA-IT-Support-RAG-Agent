@@ -160,7 +160,7 @@ footer { display: none !important; }
 """
 
 def build_ui():
-    with gr.Blocks(css=CSS, title="ARIA IT Support") as demo:
+    with gr.Blocks(title="ARIA IT Support") as demo:
         gr.HTML("""
         <div class="navbar">
             <div class="logo-circle">
@@ -331,4 +331,9 @@ if __name__ == "__main__":
     print(msg)
     demo = build_ui()
     demo.queue()
-    demo.launch(server_name="0.0.0.0", server_port=7860, allowed_paths=["."])
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.environ.get("PORT", 7860)),
+        allowed_paths=["."],
+        css=CSS
+    )
