@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aria-backend
+  labels:
+    app: aria-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: aria-backend
+  template:
+    metadata:
+      labels:
+        app: aria-backend
+    spec:
+      containers:
+      - name: aria-backend
+        image: aria-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: aria-secrets
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aria-backend-svc
+spec:
+  selector:
+    app: aria-backend
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

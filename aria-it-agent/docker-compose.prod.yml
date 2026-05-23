@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  aria-backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: aria-backend:production
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - CHROMA_PERSIST_DIR=/app/backend/database
+      - ENVIRONMENT=production
+    volumes:
+      - chroma_data:/app/backend/database
+    depends_on:
+      - redis
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+
+volumes:
+  chroma_data:
+  redis_data:

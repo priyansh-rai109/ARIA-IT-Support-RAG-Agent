@@ -1,0 +1,56 @@
+# ARIA Enterprise — Render Blueprint Specification 🚀
+# Reference: https://render.com/docs/blueprints-readme
+
+services:
+  # ── Backend FastAPI Web Service ─────────────────────────────────────────────
+  - type: web
+    name: aria-backend
+    env: docker
+    dockerfilePath: aria-it-agent/backend/Dockerfile
+    dockerContext: aria-it-agent
+    
+    # NOTE: Persistent disk volumes require the 'starter' plan or higher ($5/month).
+    # If you want to use the completely FREE tier:
+    # 1. Change plan to 'free'
+    # 2. Comment out or delete the 'disk' block below.
+    # Note: On the free tier, ChromaDB will work in-memory but reset on restarts.
+    plan: starter
+    
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false # Render will prompt you to enter your Groq API key during setup
+      - key: JWT_SECRET
+        generateValue: true # Render will automatically generate a secure random secret key
+      - key: REDIS_URL
+        fromService:
+          name: aria-redis
+          type: redis
+          property: connectionString
+      - key: PORT
+        value: 8000
+    
+    disk:
+      name: aria-db-volume
+      mountPath: /app/backend/database
+      sizeGB: 1
+
+  # ── Frontend Next.js Web Service ────────────────────────────────────────────
+  - type: web
+    name: aria-frontend
+    env: docker
+    dockerfilePath: aria-it-agent/aria-frontend/Dockerfile
+    dockerContext: aria-it-agent/aria-frontend
+    plan: free # Deploys on Render's completely free static/web service tier
+    
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: aria-backend
+          type: web
+          property: url
+
+  # ── Redis Caching Service ───────────────────────────────────────────────────
+  - type: redis
+    name: aria-redis
+    plan: free # Deploys a free managed Redis cache
+    ipAllowList: [] # Empty list restricts access to internal services only (highly secure)
