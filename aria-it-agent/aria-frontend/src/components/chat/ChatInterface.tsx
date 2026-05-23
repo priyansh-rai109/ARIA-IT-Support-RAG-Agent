@@ -196,7 +196,7 @@ export default function ChatInterface({
       // Clear active agents and set to orchestrator while processing
       onActiveAgentsChange?.(["orchestrator"]);
 
-      const res = await fetch("http://localhost:8000/api/chat", {
+      const res = await fetch("/api/chat", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -251,7 +251,7 @@ export default function ChatInterface({
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`

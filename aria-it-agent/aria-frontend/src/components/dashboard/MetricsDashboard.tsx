@@ -39,7 +39,7 @@ export default function MetricsDashboard({ token }: { token?: string }) {
 
     const fetchAnalytics = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/analytics", {
+        const res = await fetch("/api/analytics", {
           headers: {
             "Authorization": `Bearer ${token}`
           }
