@@ -1,15 +1,7 @@
 # ── ARIA IT Support RAG Agent — Production Requirements ──────────────────────
-# Python 3.10–3.13 compatible.
-#
-# KEY FIXES:
-#   1. gradio 4.x is broken on Python 3.13 (gradio_client schema bug + audioop).
-#      SOLUTION: upgrade to gradio>=5.0.0 which has full Python 3.13 support.
-#
-#   2. gradio 5.x requires huggingface_hub>=0.24.0 (HfFolder was already
-#      replaced with new auth in gradio 5.x — no longer an issue).
-
-# ── Web UI (Python 3.13 compatible) ──────────────────────────────────────────
-gradio>=5.0.0,<6.0.0
+# Gradio is NOT listed here — Hugging Face Spaces installs it automatically
+# based on `sdk_version` in README.md (currently 5.9.1).
+# Adding gradio here causes a version conflict with the platform's own install.
 
 # ── LLM & Orchestration ──────────────────────────────────────────────────────
 langchain>=0.2.0,<0.4.0
