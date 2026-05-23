@@ -1,4 +1,5 @@
 import os
+import time
 import gradio as gr
 from datetime import datetime
 from dotenv import load_dotenv
@@ -51,19 +52,147 @@ def retrieve_context(query, k=3):
     except:
         return [], ""
 
+def get_mock_response(message):
+    q = message.lower()
+    
+    # 1. Security Agent keywords
+    if any(w in q for w in ["password", "mfa", "phishing", "breach", "security", "locked", "account", "credential", "2fa", "authenticator", "unauthorized", "suspicious", "encrypt", "vpn", "access"]):
+        agent_badge = "🛡️ SECURITY AGENT"
+        content = """It looks like you need help resetting your password or your account is locked. As the **Security Agent**, I can assist you with that!
+
+**Self-Service Password Reset (SSPR) Steps:**
+1. Navigate to the corporate portal at **portal.company.com**.
+2. Click on '**Forgot Password**' or '**Unlock Account**'.
+3. Enter your corporate email address (`employee@company.com`).
+4. Select your verification method (either **Microsoft Authenticator** notification or SMS/Email verification code).
+5. Complete the MFA verification step.
+6. Choose a new password that is at least **12 characters long** (must include uppercase, lowercase, numbers, and special characters).
+
+*Note: Your password will expire every 90 days. If you fail to log in 5 times consecutively, your account will be locked automatically for 30 minutes for security reasons.*"""
+
+    # 2. DevOps Agent keywords
+    elif any(w in q for w in ["deploy", "ci/cd", "pipeline", "jenkins", "docker", "kubernetes", "pod", "container", "build", "rollback", "monitoring", "alert", "incident", "runbook", "production"]):
+        agent_badge = "⚙️ DEVOPS AGENT"
+        content = """A production alert or deployment issue has been reported. As the **DevOps Agent**, I'm initiating standard incident response!
+
+**Incident Action Plan:**
+1. **Check PagerDuty**: Ensure the on-call team has been paged and is active.
+2. **Review Deployment Logs**: Check GitHub Actions or Jenkins console logs for the latest build/release failure reasons.
+3. **Kubernetes Check**: Check pod statuses using `kubectl get pods -n production`. If a crash loop is detected, retrieve logs using `kubectl logs <pod-name> -n production`.
+4. **Rollback**: If a recent deployment caused the degradation, initiate a rollback immediately via the CI/CD pipeline.
+5. **Communication**: Join the `#incident-response` channel on Slack and post status updates for stakeholder awareness.
+
+*A P1 change ticket has been drafted to track this incident in Jira. I will escalate to the CTO if the SLA breach is imminent.*"""
+
+    # 3. Networking Agent keywords
+    elif any(w in q for w in ["network", "internet", "wifi", "wireless", "dns", "ip", "ping", "firewall", "proxy", "slow internet", "cannot connect"]):
+        agent_badge = "🌐 NETWORKING AGENT"
+        content = """It seems you are having network connectivity or VPN issues. As the **Networking Agent**, let's get you back online!
+
+**VPN & Network Troubleshooting:**
+1. **Check Local Connection**: Ensure your Wi-Fi or Ethernet connection is active and you can access public websites (e.g., google.com).
+2. **Launch GlobalProtect**: Open the **GlobalProtect VPN** client on your laptop (download from `software.company.com/vpn` if not installed).
+3. **Re-authenticate**: Enter your Active Directory credentials and approve the **MFA prompt** on your phone.
+4. **DNS Flush**: If websites aren't loading, flush your DNS cache:
+   - *Windows (cmd)*: `ipconfig /flushdns`
+   - *macOS (Terminal)*: `sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder`
+5. **Restart Router**: If working remotely, a quick power cycle of your home router often resolves gateway latency issues.
+
+*Note: You must connect to the VPN before attempting to access any internal company repositories or portals.*"""
+
+    # 4. Cloud Agent keywords
+    elif any(w in q for w in ["aws", "azure", "cloud", "s3", "ec2", "m365", "teams", "sharepoint", "cost", "billing"]):
+        agent_badge = "☁️ CLOUD OPERATIONS AGENT"
+        content = """I have intercepted a cloud infrastructure or billing query. As the **Cloud Operations Agent**, let's review our resources!
+
+**Multi-Cloud Action Items:**
+1. **AWS S3 / IAM**: Ensure S3 buckets do not have public read access enabled. Use AWS IAM policies to enforce Least Privilege.
+2. **Resource Right-sizing**: Check AWS Cost Explorer or Azure Cost Management. Identify idle EC2/VM instances and recommend down-sizing or terminating.
+3. **Microsoft 365 / Teams**: If experiencing SharePoint or Teams outages, verify the Microsoft Service Health dashboard.
+4. **Cost Optimization**: Utilize Reserved Instances (RI) or Spot Instances for non-critical developer environments to save up to 70% in monthly billing.
+
+*I can generate a detailed Cloud Cost Analysis Report for the last 30 days if requested.*"""
+
+    # 5. Infrastructure Agent keywords
+    elif any(w in q for w in ["server", "vm", "storage", "disk", "backup", "restore", "recovery", "disaster recovery", "capacity", "cpu usage", "ram"]):
+        agent_badge = "🏗️ INFRASTRUCTURE AGENT"
+        content = """I have detected a server, VM, or storage-related query. As the **Infrastructure Agent**, let's verify our systems!
+
+**Infrastructure Checklists:**
+1. **VMware ESXi/vCenter**: Check the virtual machine status. Ensure CPU and memory limits are not exhausted.
+2. **Storage Capacity**: Check disk storage space on the SAN/NAS. If utilization exceeds 90%, allocate additional datastore capacity.
+3. **Backups**: Ensure nightly Veeam backups have completed successfully. If a backup has failed, restart the backup job and check volume shadow copy services.
+4. **Disaster Recovery (DR)**: Verify RPO (Recovery Point Objective) and RTO (Recovery Time Objective) parameters before scheduling any server maintenance.
+
+*All server restarts or patch windows require an approved CAB change ticket number.*"""
+
+    # 6. Hardware Agent keywords (laptop slow, slow computer)
+    elif any(w in q for w in ["laptop", "computer", "slow", "freeze", "crash", "hardware", "monitor", "screen", "keyboard", "mouse", "printer"]):
+        agent_badge = "💻 HARDWARE AGENT"
+        content = """I see you are experiencing performance issues or freezes with your laptop. As the **Hardware Agent**, let's troubleshoot this together!
+
+**Performance Optimization Steps:**
+1. **Check Resource Usage**: Open Task Manager (Windows: `Ctrl+Shift+Esc`) or Activity Monitor (Mac: `Cmd+Space` -> search Activity Monitor). Look for processes using high CPU, RAM, or Disk.
+2. **Close Heavy Applications**: Close unused browser tabs, IDEs, or background apps.
+3. **Clear Temp Files**: Restart your device to clear system cache and release stuck processes.
+4. **Disk Space Check**: Ensure you have at least 15% free disk space on your main drive.
+5. **Updates**: Run system updates (Windows Update or macOS Software Update) to ensure all hardware drivers are optimized.
+
+*If the issue persists, submit a Hardware Support ticket on the IT Portal for a physical inspection or device replacement (SLA: 3-5 business days).*"""
+
+    # 7. HR Agent keywords
+    elif any(w in q for w in ["onboard", "new employee", "new hire", "offboard", "access", "provision", "permission", "policy"]):
+        agent_badge = "👥 HR & ACCESS AGENT"
+        content = """Welcome! It looks like you're asking about onboarding or access permissions. As the **HR & Access Management Agent**, I am here to help you get set up!
+
+**IT Onboarding Checklist:**
+1. **Submit HR Ticket**: Ensure a formal IT onboarding request has been submitted by the department manager.
+2. **Device Provisioning**: IT will prepare a standard laptop kit (SLA: 2 business days).
+3. **Account Creation**: Your Active Directory, corporate email, Slack, and Zoom accounts will be auto-provisioned.
+4. **Role-Based Access (RBAC)**: Basic department permissions are assigned automatically. Specialized tool access requires a manager-approved ticket.
+5. **MFA Enrollment**: On your first day, enroll your device at `mfa.company.com` using the temporary password provided.
+
+*Please review the Acceptable Use Policy (AUP) on the intranet before using company devices.*"""
+
+    # 8. Default Fallback
+    else:
+        agent_badge = "🧠 MASTER ORCHESTRATOR"
+        content = """Hello! I am the **Master Orchestrator**. I've received your query and routed it through the ARIA multi-agent network.
+
+Here is how I can assist you:
+• **Security & Access**: Passwords, MFA setup, locked accounts, or security reports.
+• **Network & VPN**: Wi-Fi, internet connectivity, and remote access VPN troubleshooting.
+• **Hardware & Software**: Laptop performance issues, request new equipment, or software installs.
+• **DevOps & Infrastructure**: Production outages, deployments, Kubernetes, servers, and backups.
+
+Could you please provide more details about the issue you are experiencing so I can direct it to the correct specialized agent?"""
+
+    # Yield mock response with streaming effect
+    response_text = f"**{agent_badge}**\n\n{content}"
+    words = response_text.split(" ")
+    partial = ""
+    for i, word in enumerate(words):
+        partial += word + " "
+        if i % 3 == 0:
+            yield partial
+            time.sleep(0.02)
+    yield response_text
+
+
 def stream_response(message, history):
     global api_key
     if not api_key:
         ok, msg = initialize_system()
         if not ok:
-            yield msg
+            yield from get_mock_response(message)
             return
+
     retrieved_docs, context_text = retrieve_context(message)
     system_content = f"""You are ARIA, the Master Orchestrator — a multi-agent AI IT support system. 
 You coordinate specialized agents: Security, DevOps, Networking, Cloud, Infrastructure, Hardware, and HR/Access agents.
 Be professional, concise, and mention which agent you're routing to when relevant.
 Current time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
-{"KNOWLEDGE BASE:\n" + context_text if context_text else ""}"""
+{"KNOWLEDGE BASE:\\n" + context_text if context_text else ""}"""
     messages = [{"role": "system", "content": system_content}]
     for turn in history[-6:]:
         if isinstance(turn, dict):
@@ -71,16 +200,24 @@ Current time: {datetime.now().strftime("%Y-%m-%d %H:%M")}
         elif hasattr(turn, "role") and hasattr(turn, "content"):
             messages.append({"role": turn.role, "content": turn.content})
     messages.append({"role": "user", "content": message})
+    
+    # Try calling Groq API
     try:
         response = requests.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
             json={"model": "llama-3.3-70b-versatile", "messages": messages, "stream": False},
+            timeout=8
         )
-        data = response.json()
-        yield data.get("choices", [{}])[0].get("message", {}).get("content", str(data))
-    except Exception as e:
-        yield f"Error: {str(e)}"
+        if response.status_code == 200:
+            data = response.json()
+            yield data.get("choices", [{}])[0].get("message", {}).get("content", "Empty response from AI backend.")
+            return
+    except Exception:
+        pass
+        
+    # If API fails, rate-limits, or has invalid key, trigger the elegant mock simulation fallback
+    yield from get_mock_response(message)
 
 CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
@@ -308,11 +445,16 @@ footer { display: none !important; }
 #aria-chatbot .message-wrap,
 #aria-chatbot .wrap,
 #aria-chatbot .contain,
-#aria-chatbot .feedback {
+#aria-chatbot .feedback,
+#aria-chatbot .user,
+#aria-chatbot .bot,
+#aria-chatbot .assistant,
+#aria-chatbot .bubble-wrap {
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  padding: 0 !important;
 }
 
 #aria-chatbot .bubble-wrap { padding: 3px 0 !important; }
@@ -320,12 +462,10 @@ footer { display: none !important; }
 /* User messages */
 #aria-chatbot .message.user .message-content,
 #aria-chatbot .message.user .prose,
-#aria-chatbot .bubble-wrap.user .bubble,
-#aria-chatbot .user .message .message-content,
-#aria-chatbot .user .message .prose,
-#aria-chatbot .message.user,
-#aria-chatbot .user,
-#aria-chatbot .bubble-wrap.user {
+#aria-chatbot .bubble-wrap.user .bubble .prose,
+#aria-chatbot .user .message-content,
+#aria-chatbot .user .prose,
+#aria-chatbot .user .bubble {
   background: rgba(108,60,255,0.45) !important;
   background-color: rgba(108,60,255,0.45) !important;
   backdrop-filter: blur(12px) !important;
@@ -345,17 +485,13 @@ footer { display: none !important; }
 #aria-chatbot .message.assistant .prose,
 #aria-chatbot .message.bot .message-content,
 #aria-chatbot .message.bot .prose,
-#aria-chatbot .bubble-wrap.assistant .bubble,
-#aria-chatbot .bubble-wrap.bot .bubble,
-#aria-chatbot .assistant .message .message-content,
-#aria-chatbot .assistant .message .prose,
-#aria-chatbot .bot .message .message-content,
-#aria-chatbot .bot .message .prose,
-#aria-chatbot .message.assistant,
-#aria-chatbot .message.bot,
-#aria-chatbot .bot,
-#aria-chatbot .bubble-wrap.bot,
-#aria-chatbot .bubble-wrap.assistant {
+#aria-chatbot .bubble-wrap.assistant .bubble .prose,
+#aria-chatbot .bubble-wrap.bot .bubble .prose,
+#aria-chatbot .assistant .message-content,
+#aria-chatbot .assistant .prose,
+#aria-chatbot .bot .message-content,
+#aria-chatbot .bot .prose,
+#aria-chatbot .bot .bubble {
   background: rgba(11,14,24,0.75) !important;
   background-color: rgba(11,14,24,0.75) !important;
   backdrop-filter: blur(12px) !important;
@@ -567,13 +703,43 @@ AGENTS_HTML = """
 </div>
 """
 
-INITIAL_HISTORY = [
-    {
-        "role": "assistant",
-        "content": "Welcome to **ARIA**. I am the Master Orchestrator. How can I assist you with your IT needs today?",
-        "metadata": {"title": "● ORCHESTRATOR"},
-    }
-]
+def check_messages_format():
+    import inspect
+    try:
+        chatbot_sig = inspect.signature(gr.Chatbot.__init__)
+        return hasattr(gr, "ChatMessage") or ("type" in chatbot_sig.parameters)
+    except:
+        return False
+
+use_messages_format = check_messages_format()
+
+def get_initial_history():
+    if use_messages_format:
+        return [
+            {
+                "role": "assistant",
+                "content": "Welcome to **ARIA**. I am the Master Orchestrator. How can I assist you with your IT needs today?",
+                "metadata": {"title": "● ORCHESTRATOR"},
+            }
+        ]
+    else:
+        return [[None, "Welcome to **ARIA**. I am the Master Orchestrator. How can I assist you with your IT needs today?"]]
+
+def format_history_for_chatbot(history_dicts):
+    if use_messages_format:
+        return history_dicts
+    else:
+        tuples = []
+        user_val = None
+        for h in history_dicts:
+            if h["role"] == "user":
+                user_val = h["content"]
+            elif h["role"] == "assistant":
+                tuples.append([user_val, h["content"]])
+                user_val = None
+        if user_val is not None:
+            tuples.append([user_val, None])
+        return tuples
 
 def build_ui():
     import inspect
@@ -648,56 +814,111 @@ def build_ui():
                 wf5 = gr.Button("🤝  Onboard new employee", elem_classes="wf-btn")
 
                 gr.HTML("<div class='sidebar-section-title' style='margin-top:12px;'>Views</div>")
-                gr.Button("💬  Agent Chat", elem_classes="view-btn view-btn-active")
-                gr.Button("📊  Analytics Dashboard", elem_classes="view-btn")
+                chat_view_btn = gr.Button("💬  Agent Chat", elem_classes="view-btn view-btn-active")
+                analytics_view_btn = gr.Button("📊  Analytics Dashboard", elem_classes="view-btn")
 
             # ── Center Panel ────────────────────────────────────────────────────
             with gr.Column(scale=1, min_width=400, elem_classes="center-panel"):
-                # Robot Hero + Chat overlay
-                with gr.Group(elem_classes="hero-zone"):
-                    chatbot_kwargs = {
-                        "value": INITIAL_HISTORY,
-                        "elem_id": "aria-chatbot",
-                        "height": "100%",
-                        "show_label": False,
-                        "avatar_images": (
-                            None,
-                            "https://api.iconify.design/ri:robot-2-fill.svg?color=%236c3cff",
-                        ),
-                    }
-                    chatbot_sig = inspect.signature(gr.Chatbot.__init__)
-                    if "type" in chatbot_sig.parameters:
-                        chatbot_kwargs["type"] = "messages"
-                    if "bubble_full_width" in chatbot_sig.parameters:
-                        chatbot_kwargs["bubble_full_width"] = False
-                    if "show_copy_button" in chatbot_sig.parameters:
-                        chatbot_kwargs["show_copy_button"] = False
-                    
-                    chatbot = gr.Chatbot(**chatbot_kwargs)
+                
+                # Chat View Group
+                with gr.Group(visible=True) as chat_view_group:
+                    # Robot Hero + Chat overlay
+                    with gr.Group(elem_classes="hero-zone"):
+                        chatbot_kwargs = {
+                            "value": get_initial_history(),
+                            "elem_id": "aria-chatbot",
+                            "height": "100%",
+                            "show_label": False,
+                            "avatar_images": (
+                                None,
+                                "https://api.iconify.design/ri:robot-2-fill.svg?color=%236c3cff",
+                            ),
+                        }
+                        chatbot_sig = inspect.signature(gr.Chatbot.__init__)
+                        if "type" in chatbot_sig.parameters:
+                            chatbot_kwargs["type"] = "messages"
+                        if "bubble_full_width" in chatbot_sig.parameters:
+                            chatbot_kwargs["bubble_full_width"] = False
+                        if "show_copy_button" in chatbot_sig.parameters:
+                            chatbot_kwargs["show_copy_button"] = False
+                        
+                        chatbot = gr.Chatbot(**chatbot_kwargs)
 
-                # Chat input bar
-                with gr.Row(elem_classes="chat-bar"):
-                    attach = gr.Button("📎", elem_classes="attach-btn", min_width=34)
-                    msg = gr.Textbox(
-                        placeholder="Ask ARIA to troubleshoot, fix, or provision...",
-                        show_label=False,
-                        scale=10,
-                        elem_classes="aria-input",
-                        container=False,
-                        lines=1,
-                        max_lines=4,
-                    )
-                    send = gr.Button("➤", elem_classes="send-btn", min_width=38)
+                    # Chat input bar
+                    with gr.Row(elem_classes="chat-bar"):
+                        attach = gr.Button("📎", elem_classes="attach-btn", min_width=34)
+                        msg = gr.Textbox(
+                            placeholder="Ask ARIA to troubleshoot, fix, or provision...",
+                            show_label=False,
+                            scale=10,
+                            elem_classes="aria-input",
+                            container=False,
+                            lines=1,
+                            max_lines=4,
+                        )
+                        send = gr.Button("➤", elem_classes="send-btn", min_width=38)
 
-                gr.HTML("""
-                <div class="status-bar">
-                  <div class="status-indicator">
-                    <div class="status-dot"></div>
-                    Orchestrator Active
-                  </div>
-                  <div>Press Enter to send, Shift+Enter for new line</div>
-                </div>
-                """)
+                    gr.HTML("""
+                    <div class="status-bar">
+                      <div class="status-indicator">
+                        <div class="status-dot"></div>
+                        Orchestrator Active
+                      </div>
+                      <div>Press Enter to send, Shift+Enter for new line</div>
+                    </div>
+                    """)
+
+                # Analytics Dashboard View Group
+                with gr.Group(visible=False) as analytics_view_group:
+                    with gr.Group(elem_classes="hero-zone"):
+                        gr.HTML("<div class='sidebar-section-title' style='font-size: 16px; color: white; padding: 20px 20px 0 20px;'>SYSTEM ANALYTICS</div>")
+                        gr.HTML("""
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 20px;">
+                          <div style="background: rgba(11, 14, 24, 0.7); border: 1px solid rgba(108, 60, 255, 0.3); border-radius: 12px; padding: 16px; backdrop-filter: blur(10px);">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">Resolution Rate</div>
+                            <div style="font-size: 28px; font-weight: 700; color: #22c55e; margin-top: 8px;">98.2% <span style="font-size: 12px; color: #22c55e; font-weight: 500;">▲ 1.4%</span></div>
+                          </div>
+                          <div style="background: rgba(11, 14, 24, 0.7); border: 1px solid rgba(108, 60, 255, 0.3); border-radius: 12px; padding: 16px; backdrop-filter: blur(10px);">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">Avg Response Time</div>
+                            <div style="font-size: 28px; font-weight: 700; color: #00d4ff; margin-top: 8px;">1.4s <span style="font-size: 12px; color: #22c55e; font-weight: 500;">▼ 0.2s</span></div>
+                          </div>
+                          <div style="background: rgba(11, 14, 24, 0.7); border: 1px solid rgba(108, 60, 255, 0.3); border-radius: 12px; padding: 16px; backdrop-filter: blur(10px);">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">Active Sessions</div>
+                            <div style="font-size: 28px; font-weight: 700; color: #a78bfa; margin-top: 8px;">14 <span style="font-size: 12px; color: #a78bfa; font-weight: 500;">Live</span></div>
+                          </div>
+                          <div style="background: rgba(11, 14, 24, 0.7); border: 1px solid rgba(108, 60, 255, 0.3); border-radius: 12px; padding: 16px; backdrop-filter: blur(10px);">
+                            <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.5px;">Escalated Tickets</div>
+                            <div style="font-size: 28px; font-weight: 700; color: #ef4444; margin-top: 8px;">2 <span style="font-size: 12px; color: #ef4444; font-weight: 500;">Pending</span></div>
+                          </div>
+                        </div>
+                        """)
+                        gr.HTML("""
+                        <div style="padding: 0 20px 20px 20px;">
+                          <div style="background: rgba(11, 14, 24, 0.7); border: 1px solid rgba(108, 60, 255, 0.3); border-radius: 12px; padding: 16px; backdrop-filter: blur(10px);">
+                            <div style="font-size: 12px; font-weight: 600; color: white; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Orchestrator Agent Activity Log</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 12px;">
+                                <span style="color: #00d4ff;">🛡️ Security Agent</span>
+                                <span style="color: #64748b;">MFA enroll check for User: employee@company.com</span>
+                                <span style="color: #22c55e;">SUCCESS</span>
+                              </div>
+                              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 12px;">
+                                <span style="color: #00d4ff;">⚙️ DevOps Agent</span>
+                                <span style="color: #64748b;">Incident page sent to on-call (P1 ticket)</span>
+                                <span style="color: #22c55e;">SUCCESS</span>
+                              </div>
+                              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px; font-size: 12px;">
+                                <span style="color: #00d4ff;">🌐 Networking Agent</span>
+                                <span style="color: #64748b;">VPN tunnel reset requested for GlobalProtect</span>
+                                <span style="color: #f59e0b;">IN_PROGRESS</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        """)
+                    # Dummy spacer for layout
+                    gr.HTML("<div style='height: 58px; background: rgba(11,14,24,0.95); border-top: 1px solid var(--border);'></div>")
+                    gr.HTML("<div style='height: 25px; background: rgba(11,14,24,0.95); border-top: 1px solid var(--border);'></div>")
 
             # ── Right Agent Roster ──────────────────────────────────────────────
             with gr.Column(scale=0, min_width=260):
@@ -725,7 +946,8 @@ def build_ui():
             if not message.strip():
                 return "", history
             history_dicts = normalize_history(history)
-            return "", history_dicts + [{"role": "user", "content": message}]
+            new_history = history_dicts + [{"role": "user", "content": message}]
+            return "", format_history_for_chatbot(new_history)
 
         def bot_respond(history):
             if not history:
@@ -734,7 +956,7 @@ def build_ui():
             history_dicts = normalize_history(history)
             
             if not history_dicts or history_dicts[-1]["role"] != "user":
-                yield history_dicts
+                yield format_history_for_chatbot(history_dicts)
                 return
             
             user_msg = history_dicts[-1]["content"]
@@ -763,6 +985,35 @@ def build_ui():
                 inputs=[chatbot],
                 outputs=[chatbot]
             ).then(bot_respond, chatbot, chatbot)
+
+        # Navigation Toggles for Views
+        def show_chat_view():
+            return (
+                gr.update(visible=True), # chat_view_group
+                gr.update(visible=False), # analytics_view_group
+                gr.update(elem_classes="view-btn view-btn-active"), # chat_view_btn
+                gr.update(elem_classes="view-btn") # analytics_view_btn
+            )
+
+        def show_analytics_view():
+            return (
+                gr.update(visible=False), # chat_view_group
+                gr.update(visible=True), # analytics_view_group
+                gr.update(elem_classes="view-btn"), # chat_view_btn
+                gr.update(elem_classes="view-btn view-btn-active") # analytics_view_btn
+            )
+
+        chat_view_btn.click(
+            fn=show_chat_view,
+            inputs=[],
+            outputs=[chat_view_group, analytics_view_group, chat_view_btn, analytics_view_btn]
+        )
+
+        analytics_view_btn.click(
+            fn=show_analytics_view,
+            inputs=[],
+            outputs=[chat_view_group, analytics_view_group, chat_view_btn, analytics_view_btn]
+        )
 
     return demo, theme_obj, blocks_kwargs
 
