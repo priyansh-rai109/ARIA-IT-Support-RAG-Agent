@@ -1,13 +1,3 @@
-import sys
-from types import ModuleType
-
-# Mock audioop and pyaudioop for Python 3.13 compatibility with Gradio/Pydub on Hugging Face
-for module_name in ["audioop", "pyaudioop"]:
-    if module_name not in sys.modules:
-        mock_module = ModuleType(module_name)
-        mock_module.error = Exception
-        sys.modules[module_name] = mock_module
-
 import os
 import gradio as gr
 from datetime import datetime
@@ -248,7 +238,7 @@ def build_ui():
 
             with gr.Column(scale=50, min_width=500, elem_classes="center-col"):
                 gr.HTML("<div style='color:var(--accent2); font-weight:600; font-size:14px; margin-bottom:16px;'>ARIA</div>")
-                chatbot = gr.Chatbot(elem_id="chatbot", height=500, show_label=False, avatar_images=(None, "https://api.iconify.design/ri:robot-2-fill.svg?color=%233b82f6"))
+                chatbot = gr.Chatbot(elem_id="chatbot", height=500, show_label=False, type="messages", avatar_images=(None, "https://api.iconify.design/ri:robot-2-fill.svg?color=%233b82f6"))
                 with gr.Row(elem_classes="chat-input-container"):
                     msg = gr.Textbox(placeholder="Ask me anything about IT support...", show_label=False, scale=10, elem_classes="chat-input", container=False)
                     send = gr.Button("➤", scale=1, elem_classes="send-btn")
@@ -336,7 +326,7 @@ def build_ui():
 
     return demo
 
-# Initialize system on startup (works on HF Spaces where __main__ is never called)
+# Initialize system on startup
 print("Starting ARIA with Groq...")
 ok, msg = initialize_system()
 print(msg)
@@ -344,12 +334,9 @@ print(msg)
 demo = build_ui()
 demo.queue()
 
-if __name__ == "__main__":
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.environ.get("PORT", 7860)),
-        allowed_paths=["."],
-    )
-else:
-    # Hugging Face Spaces: expose the top-level `demo` object for the SDK runner
-    demo.launch()
+# Always use server_name='0.0.0.0' so Hugging Face Spaces networking works
+demo.launch(
+    server_name="0.0.0.0",
+    server_port=int(os.environ.get("PORT", 7860)),
+    allowed_paths=["."],
+)
