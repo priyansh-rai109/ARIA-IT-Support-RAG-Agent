@@ -1,3 +1,13 @@
+import sys
+from types import ModuleType
+
+# Mock audioop and pyaudioop for Python 3.13 compatibility with Gradio/Pydub on Hugging Face
+for module_name in ["audioop", "pyaudioop"]:
+    if module_name not in sys.modules:
+        mock_module = ModuleType(module_name)
+        mock_module.error = Exception
+        sys.modules[module_name] = mock_module
+
 import os
 import gradio as gr
 from datetime import datetime
