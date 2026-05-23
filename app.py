@@ -539,7 +539,28 @@ INITIAL_HISTORY = [
 ]
 
 def build_ui():
-    with gr.Blocks(title="ARIA — Multi-Agent AI OS") as demo:
+    import inspect
+    
+    theme_obj = gr.themes.Base(
+        primary_hue="violet",
+        neutral_hue="slate",
+        font=[gr.themes.GoogleFont("Inter"), "sans-serif"],
+    ).set(
+        body_background_fill="#07090f",
+        body_background_fill_dark="#07090f",
+        block_background_fill="#0b0e18",
+        block_background_fill_dark="#0b0e18",
+        block_border_color="#1a2035",
+    )
+
+    blocks_kwargs = {"title": "ARIA — Multi-Agent AI OS"}
+    blocks_sig = inspect.signature(gr.Blocks.__init__)
+    if "theme" in blocks_sig.parameters:
+        blocks_kwargs["theme"] = theme_obj
+    if "css" in blocks_sig.parameters:
+        blocks_kwargs["css"] = CSS
+
+    with gr.Blocks(**blocks_kwargs) as demo:
 
         # ── Top Navbar ──────────────────────────────────────────────────────────
         gr.HTML("""
@@ -597,16 +618,25 @@ def build_ui():
             with gr.Column(scale=1, min_width=400, elem_classes="center-panel"):
                 # Robot Hero + Chat overlay
                 with gr.Group(elem_classes="hero-zone"):
-                    chatbot = gr.Chatbot(
-                        value=INITIAL_HISTORY,
-                        elem_id="aria-chatbot",
-                        height="100%",
-                        show_label=False,
-                        avatar_images=(
+                    chatbot_kwargs = {
+                        "value": INITIAL_HISTORY,
+                        "elem_id": "aria-chatbot",
+                        "height": "100%",
+                        "show_label": False,
+                        "avatar_images": (
                             None,
                             "https://api.iconify.design/ri:robot-2-fill.svg?color=%236c3cff",
                         ),
-                    )
+                    }
+                    chatbot_sig = inspect.signature(gr.Chatbot.__init__)
+                    if "type" in chatbot_sig.parameters:
+                        chatbot_kwargs["type"] = "messages"
+                    if "bubble_full_width" in chatbot_sig.parameters:
+                        chatbot_kwargs["bubble_full_width"] = False
+                    if "show_copy_button" in chatbot_sig.parameters:
+                        chatbot_kwargs["show_copy_button"] = False
+                    
+                    chatbot = gr.Chatbot(**chatbot_kwargs)
 
                 # Chat input bar
                 with gr.Row(elem_classes="chat-bar"):
@@ -637,30 +667,36 @@ def build_ui():
                 gr.HTML(AGENTS_HTML)
 
         # ── Event Logic ─────────────────────────────────────────────────────────
+        def normalize_history(history):
+            history_dicts = []
+            if not history:
+                return history_dicts
+            for h in history:
+                if isinstance(h, dict):
+                    history_dicts.append(h)
+                elif isinstance(h, (list, tuple)) and len(h) == 2:
+                    user_val, bot_val = h
+                    if user_val is not None:
+                        history_dicts.append({"role": "user", "content": user_val})
+                    if bot_val is not None:
+                        history_dicts.append({"role": "assistant", "content": bot_val})
+                elif hasattr(h, "role") and hasattr(h, "content"):
+                    history_dicts.append({"role": h.role, "content": h.content, "metadata": getattr(h, "metadata", None)})
+            return history_dicts
+
         def user_submit(message, history):
             if not message.strip():
                 return "", history
-            history_dicts = []
-            if history:
-                for h in history:
-                    if isinstance(h, dict):
-                        history_dicts.append(h)
-                    else:
-                        history_dicts.append({"role": h.role, "content": h.content, "metadata": getattr(h, "metadata", None)})
+            history_dicts = normalize_history(history)
             return "", history_dicts + [{"role": "user", "content": message}]
 
         def bot_respond(history):
             if not history:
                 yield history
                 return
-            history_dicts = []
-            for h in history:
-                if isinstance(h, dict):
-                    history_dicts.append(h)
-                else:
-                    history_dicts.append({"role": h.role, "content": h.content, "metadata": getattr(h, "metadata", None)})
+            history_dicts = normalize_history(history)
             
-            if history_dicts[-1]["role"] != "user":
+            if not history_dicts or history_dicts[-1]["role"] != "user":
                 yield history_dicts
                 return
             
@@ -675,13 +711,7 @@ def build_ui():
         send.click(user_submit, [msg, chatbot], [msg, chatbot]).then(bot_respond, chatbot, chatbot)
 
         def click_workflow(chatbot_history, q):
-            history_dicts = []
-            if chatbot_history:
-                for h in chatbot_history:
-                    if isinstance(h, dict):
-                        history_dicts.append(h)
-                    else:
-                        history_dicts.append({"role": h.role, "content": h.content, "metadata": getattr(h, "metadata", None)})
+            history_dicts = normalize_history(chatbot_history)
             return history_dicts + [{"role": "user", "content": q}]
 
         for btn, query in [
@@ -697,7 +727,7 @@ def build_ui():
                 outputs=[chatbot]
             ).then(bot_respond, chatbot, chatbot)
 
-    return demo
+    return demo, theme_obj, blocks_kwargs
 
 
 # ── Startup ──────────────────────────────────────────────────────────────────
@@ -705,25 +735,19 @@ print("Starting ARIA Multi-Agent OS...")
 ok, msg_txt = initialize_system()
 print(msg_txt)
 
-demo = build_ui()
+demo, theme_obj, blocks_kwargs = build_ui()
 demo.queue()
 
-theme_obj = gr.themes.Base(
-    primary_hue="violet",
-    neutral_hue="slate",
-    font=[gr.themes.GoogleFont("Inter"), "sans-serif"],
-).set(
-    body_background_fill="#07090f",
-    body_background_fill_dark="#07090f",
-    block_background_fill="#0b0e18",
-    block_background_fill_dark="#0b0e18",
-    block_border_color="#1a2035",
-)
+import inspect
+launch_kwargs = {
+    "server_name": "0.0.0.0",
+    "server_port": int(os.environ.get("PORT", 7860)),
+    "allowed_paths": ["."],
+}
+launch_sig = inspect.signature(gr.Blocks.launch)
+if "theme" in launch_sig.parameters and "theme" not in blocks_kwargs:
+    launch_kwargs["theme"] = theme_obj
+if "css" in launch_sig.parameters and "css" not in blocks_kwargs:
+    launch_kwargs["css"] = CSS
 
-demo.launch(
-    server_name="0.0.0.0",
-    server_port=int(os.environ.get("PORT", 7860)),
-    allowed_paths=["."],
-    theme=theme_obj,
-    css=CSS,
-)
+demo.launch(**launch_kwargs)
