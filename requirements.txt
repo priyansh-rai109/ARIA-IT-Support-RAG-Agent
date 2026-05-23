@@ -1,7 +1,32 @@
-gradio>=4.44.0
-anthropic>=0.34.0
-langchain>=0.2.0
-langchain-community>=0.2.0
-chromadb>=0.5.0
-sentence-transformers>=3.0.0
-python-dotenv>=1.0.0
+# ── ARIA IT Support RAG Agent — Production Requirements ──────────────────────
+# Python 3.10 / 3.11 compatible. Pinned for stability and reproducibility.
+#
+# ROOT CAUSE FIX:
+#   huggingface_hub>=1.0.0 removed the `HfFolder` class.
+#   gradio==4.x still depends on HfFolder internally.
+#   Fix: pin huggingface_hub<1 to keep the 0.x API surface intact.
+
+# ── Web UI ────────────────────────────────────────────────────────────────────
+gradio==4.44.0
+
+# ── Hugging Face Ecosystem (PINNED: must stay <1 for gradio compat) ───────────
+huggingface_hub>=0.23.0,<1.0.0
+
+# ── LLM & Orchestration ──────────────────────────────────────────────────────
+langchain>=0.2.0,<0.4.0
+langchain-community>=0.2.0,<0.4.0
+langchain-core>=0.2.0,<0.4.0
+langchain-text-splitters>=0.2.0,<0.4.0
+
+# ── Vector Store ──────────────────────────────────────────────────────────────
+chromadb>=0.5.0,<0.6.0
+
+# ── Embeddings ───────────────────────────────────────────────────────────────
+sentence-transformers>=3.0.0,<4.0.0
+
+# ── HTTP & Env ───────────────────────────────────────────────────────────────
+requests>=2.31.0,<3.0.0
+python-dotenv>=1.0.0,<2.0.0
+
+# ── (REMOVED: do NOT add audioop-lts or pyaudioop — these need C compilers)
+# ── (The audioop mock is handled directly in app.py via sys.modules injection)
