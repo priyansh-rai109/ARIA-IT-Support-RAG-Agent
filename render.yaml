@@ -39,7 +39,4 @@ services:
     
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: aria-backend
-          type: web
-          property: url
+        value: http://aria-backend:8000 # Communicates securely over Render's private network
