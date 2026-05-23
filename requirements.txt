@@ -1,16 +1,15 @@
 # ── ARIA IT Support RAG Agent — Production Requirements ──────────────────────
-# Python 3.10 / 3.11 compatible. Pinned for stability and reproducibility.
+# Python 3.10–3.13 compatible.
 #
-# ROOT CAUSE FIX:
-#   huggingface_hub>=1.0.0 removed the `HfFolder` class.
-#   gradio==4.x still depends on HfFolder internally.
-#   Fix: pin huggingface_hub<1 to keep the 0.x API surface intact.
+# KEY FIXES:
+#   1. gradio 4.x is broken on Python 3.13 (gradio_client schema bug + audioop).
+#      SOLUTION: upgrade to gradio>=5.0.0 which has full Python 3.13 support.
+#
+#   2. gradio 5.x requires huggingface_hub>=0.24.0 (HfFolder was already
+#      replaced with new auth in gradio 5.x — no longer an issue).
 
-# ── Web UI ────────────────────────────────────────────────────────────────────
-gradio==4.44.0
-
-# ── Hugging Face Ecosystem (PINNED: must stay <1 for gradio compat) ───────────
-huggingface_hub>=0.23.0,<1.0.0
+# ── Web UI (Python 3.13 compatible) ──────────────────────────────────────────
+gradio>=5.0.0,<6.0.0
 
 # ── LLM & Orchestration ──────────────────────────────────────────────────────
 langchain>=0.2.0,<0.4.0
@@ -27,6 +26,3 @@ sentence-transformers>=3.0.0,<4.0.0
 # ── HTTP & Env ───────────────────────────────────────────────────────────────
 requests>=2.31.0,<3.0.0
 python-dotenv>=1.0.0,<2.0.0
-
-# ── (REMOVED: do NOT add audioop-lts or pyaudioop — these need C compilers)
-# ── (The audioop mock is handled directly in app.py via sys.modules injection)
