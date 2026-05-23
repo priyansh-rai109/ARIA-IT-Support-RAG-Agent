@@ -37,7 +37,8 @@ def initialize_system():
     global vectorstore, api_key
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        return False, "GROQ_API_KEY not found in .env file."
+        # On Hugging Face Spaces, set the secret via Space Settings → Variables and Secrets
+        return False, "⚠️ GROQ_API_KEY not set. Please add it in your Hugging Face Space Secrets (Settings → Variables and Secrets → GROQ_API_KEY)."
     try:
         documents = [Document(page_content=item["content"], metadata={"title": item["title"], "category": item["category"]}) for item in IT_KNOWLEDGE_BASE]
         splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
@@ -170,7 +171,7 @@ footer { display: none !important; }
 """
 
 def build_ui():
-    with gr.Blocks(title="ARIA IT Support") as demo:
+    with gr.Blocks(title="ARIA IT Support", css=CSS) as demo:
         gr.HTML("""
         <div class="navbar">
             <div class="logo-circle">
@@ -335,15 +336,20 @@ def build_ui():
 
     return demo
 
+# Initialize system on startup (works on HF Spaces where __main__ is never called)
+print("Starting ARIA with Groq...")
+ok, msg = initialize_system()
+print(msg)
+
+demo = build_ui()
+demo.queue()
+
 if __name__ == "__main__":
-    print("Starting ARIA with Groq...")
-    ok, msg = initialize_system()
-    print(msg)
-    demo = build_ui()
-    demo.queue()
     demo.launch(
         server_name="0.0.0.0",
         server_port=int(os.environ.get("PORT", 7860)),
         allowed_paths=["."],
-        css=CSS
     )
+else:
+    # Hugging Face Spaces: expose the top-level `demo` object for the SDK runner
+    demo.launch()
