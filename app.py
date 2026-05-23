@@ -258,7 +258,7 @@ def build_ui():
                 clear = gr.Button("Clear", elem_id="clear-btn", visible=False)
 
             with gr.Column(scale=30, min_width=300, elem_classes="right-col"):
-                gr.Image("robot_v5.png", show_label=False, interactive=False, container=False, elem_classes="robot-img")
+                gr.Image("robot_custom.png", show_label=False, interactive=False, container=False, elem_classes="robot-img")
                 gr.HTML("""
                 <div class="thinking-card">
                     <span>🧠</span>
