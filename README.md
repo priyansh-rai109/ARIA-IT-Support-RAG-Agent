@@ -1,15 +1,3 @@
----
-title: Aria IT Support Agent
-emoji: ⚡
-colorFrom: blue
-colorTo: indigo
-sdk: gradio
-sdk_version: 5.9.1
-app_file: app.py
-pinned: false
-license: mit
----
-
 # ARIA — Autonomous Resolution & Intelligence Agent
 ### IT Support RAG Agentic AI · Powered by Claude + ChromaDB + Gradio
 

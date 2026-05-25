@@ -1,7 +1,7 @@
-# ── ARIA IT Support RAG Agent — Production Requirements ──────────────────────
-# Gradio is NOT listed here — Hugging Face Spaces installs it automatically
-# based on `sdk_version` in README.md (currently 5.9.1).
-# Adding gradio here causes a version conflict with the platform's own install.
+# ── ARIA IT Support RAG Agent — Railway Requirements ──────────────────────
+
+# ── Gradio UI Interface ──────────────────────────────────────────────────────
+gradio==5.9.1
 
 # ── LLM & Orchestration ──────────────────────────────────────────────────────
 langchain>=0.2.0,<0.4.0
@@ -18,4 +18,6 @@ sentence-transformers>=3.0.0,<4.0.0
 # ── HTTP & Env ───────────────────────────────────────────────────────────────
 requests>=2.31.0,<3.0.0
 python-dotenv>=1.0.0,<2.0.0
-audioop-lts>=1.0.0,<2.0.0
+
+# ── Audioop backport ─────────────────────────────────────────────────────────
+audioop-lts==0.2.2
